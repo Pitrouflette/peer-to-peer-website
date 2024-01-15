@@ -29,6 +29,16 @@ const socket = io();
       console.log(peerConnection);
     });
 
+    socket.on('display messages', (message) => {
+        console.log('DISPLAYING MESSAGES');
+        displayMessage("user", rows.message, "you");
+    });
+
+    socket.on('message', (data) => {
+        console.log("message recieved");
+        displayMessage("user", data.message, "you");
+    });
+
     function initiateConnection(targetSocketId) {
         if (peerConnection && peerConnection.signalingState !== 'closed') {
             console.warn('La connexion existe déjà.');
@@ -77,7 +87,7 @@ const socket = io();
 
     function setupDataChannel(dataChannel) {
       dataChannel.onmessage = (event) => {
-        displayMessage('Other User', event.data);
+        displayMessage('Other User', event.data, 'you');
       };
 
       dataChannel.onopen = () => {
@@ -114,6 +124,7 @@ const socket = io();
             console.warn('The connection is not in a proper state to accept the offer currently.');
         }
         document.getElementById('userIdDisplay').innerHTML = `Your ID: ${socket.id}, Connected to: ${sourceSocketId}`;
+        document.getElementById('IDInput').value = `${sourceSocketId}`;
     }
 
 
@@ -158,24 +169,32 @@ const socket = io();
 
             if(dataChannel.readyState != 'open'){
                 console.log("not ready");
-                return;
             }
 
             console.log('peer connection verified');
-            dataChannel.send(message);
-            displayMessage('You', message);
+            let data = {
+                'message' : message,
+                'target' : document.getElementById('IDInput').value,
+            }
+            socket.emit('message', (data));
+            console.log(data.target);
+            displayMessage('You', data.message, data.target);
             messageInput.value = '';
             console.log('message sent !');
-
         }
     }
-    function displayMessage(sender, message) {
-      const chatMessages = document.createElement('div');
-      chatMessages.innerHTML = `<strong>${sender}:</strong> ${message}`;
-      chatMessagesContainer.appendChild(chatMessages);
-      let data = {
-        'sender': sender,
-        'message': message.toString
-      };
-      socket.emit('save in DB', (data));
+    function displayMessage(sender = "user", message, target = "user") {
+        if(!message){
+            console.log("no message to display :/ strange");
+            return;
+        }
+        console.log("message to display :/ strange");
+        const chatMessages = document.createElement('div');
+        chatMessages.innerHTML = `<strong>${document.getElementById('IDInput').value} to ${target}:</strong> ${message}`;
+        chatMessagesContainer.appendChild(chatMessages);
+        let data = {
+            'sender': sender,
+            'message': message
+        };
+        socket.emit('save in DB', (data));
     }

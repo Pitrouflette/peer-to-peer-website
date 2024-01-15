@@ -7,11 +7,11 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const messagesDB = new sqlite3.Database('public/messages.db', sqlite3.OPEN_READWRITE, (err) => {
+const messagesDB = new sqlite3.Database('public/message.db', sqlite3.OPEN_READWRITE, (err) => {
   if(err) return console.error(err.message);
 });
 
-sql = 'CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY,from,message)';
+sql = 'CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY,message)';
 messagesDB.run(sql);
 
 app.get('/', (req, res) => {
@@ -43,25 +43,32 @@ io.on('connection', (socket) => {
 
   // DB EVENTS
   socket.on('load messages from db', () => {
-    const sql = 'SELECT * FROM users';
+    const sql = 'SELECT * FROM messages';
     messagesDB.all(sql, [], (err, rows) => {
       if (err) {
         console.error(err.message);
         return;
+      }if (rows){
+        // Envoyez les données au client
+      console.log('messages loading');
+      socket.emit('display messages', rows.message);
       }
-      // Envoyez les données au client
-      socket.emit('recive messages', rows);
     });
   });
 
   socket.on('save in DB', (data) => {
-    sql = 'INSERT INTO messages (from, messages) VALUES (?, ?)';
-    messagesDB.run(sql, ["user", data.message], (err, rows) => {
+    sql = 'INSERT INTO messages ( message) VALUES (?)';
+    messagesDB.run(sql, [ data.message], (err, rows) => {
       if (err) {
         console.error(err.message);
         return;
       }
     });
+  });
+
+  // MESSAGE
+  socket.on('message', (data) => {
+    io.to(data.target).emit('message', data);
   });
 });
 
