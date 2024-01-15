@@ -1,0 +1,57 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f4;
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+}
+
+#chat-messages {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  overflow-y: scroll;
+  max-height: 400px;
+}
+
+#messageInput {
+  width: 70%;
+  padding: 8px;
+  margin-right: 5px;
+  border: 1px solid #ccc;
+}
+
+button {
+  padding: 8px;
+  border: 1px solid #007bff;
+  background-color: #007bff;
+  color: #fff;
+  cursor: pointer;
+}
+
+#IDInput {
+  width: 20%;
+  padding: 8px;
+  margin-right: 5px;
+  border: 1px solid #ccc;
+}
+
+#initiateConnectionBtn {
+  padding: 8px;
+  border: 1px solid #28a745;
+  background-color: #28a745;
+  color: #fff;
+  cursor: pointer;
+}
+
+#userIdDisplay {
+  text-align: center;
+  margin-top: 10px;
+  color: #333;
+}

@@ -1,30 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebRTC Chat Example</title>
-</head>
-<body>
-  <h1>WebRTC Chat Example</h1>
-
-  <div id="chat-messages"></div>
-  <input type="text" id="messageInput" placeholder="Type your message...">
-  <button onclick="sendMessage()">Send</button>
-  <input type="text" id="IDInput" placeholder="the id you wish to connect to">
-  <button id="initiateConnectionBtn">connect</button>
-
-  <div id="userIdDisplay">Your ID: <span id="userId"></span></div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
-  <script>
-    const socket = io();
+const socket = io();
     const chatMessagesContainer = document.getElementById('chat-messages');
     const messageInput = document.getElementById('messageInput');
     let peerConnection;
 
     socket.on('connect', () => {
       console.log('Connected to server');
+      socket.emit('load messages from db', "");
 
       document.getElementById('initiateConnectionBtn').addEventListener('click', () => {
         if (document.getElementById('IDInput').value){
@@ -45,6 +26,7 @@
 
     socket.on('ice-candidate', (candidate, targetSocketId) => {
       handleIceCandidate(candidate, targetSocketId);
+      console.log(peerConnection);
     });
 
     function initiateConnection(targetSocketId) {
@@ -53,32 +35,44 @@
             return;
         }
 
-        peerConnection = new RTCPeerConnection();
+        const iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+        const config = { iceServers: iceServers };
+        peerConnection = peerConnection || new RTCPeerConnection(config);
         const dataChannel = peerConnection.createDataChannel('chat');
         setupDataChannel(dataChannel);
 
         peerConnection.onnegotiationneeded = () => {
+            console.log('Negotiation needed...');
+            console.log('Connection state before offer:', peerConnection.connectionState);
             peerConnection.createOffer()
                 .then((offer) => peerConnection.setLocalDescription(offer))
                 .then(() => {
-                    socket.emit('offer', peerConnection.localDescription, targetSocketId);
-                    console.log("offer sent !");
+                    console.log('Connection state after offer creation:', peerConnection.connectionState);
+                    setTimeout(() => {
+                        console.log('Local description set. Emitting offer...');
+                        socket.emit('offer', peerConnection.localDescription, targetSocketId);
+                        console.log("Offer sent!");
+                    }, 1000);
                 })
                 .catch((error) => {
                     console.error('Erreur lors de la création de l\'offre:', error);
                     closeConnection();
                 });
         };
-        document.getElementById('userIdDisplay').innerText = `Your ID: ${socket.id}, Connected to: ${targetSocketId}`;
+        peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            console.log('ICE candidate:' + event.candidate);
+            socket.emit('ice-candidate', event.candidate, targetSocketId);
+        }
+    };
+        document.getElementById('userIdDisplay').innerHTML = `Your ID: ${socket.id}, Connected to: ${targetSocketId}`;
     }
-
-
 
     function closeConnection() {
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-    }
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
     }
 
     function setupDataChannel(dataChannel) {
@@ -93,7 +87,7 @@
       dataChannel.onclose = () => {
         console.log('Le canal de données est fermé');
       };
-      console.log("conected !");
+      console.log("conected !" + dataChannel.readyState.toString());
     }
 
     function handleOffer(offer, sourceSocketId) {
@@ -119,7 +113,7 @@
         } else {
             console.warn('The connection is not in a proper state to accept the offer currently.');
         }
-        document.getElementById('userIdDisplay').innerText = `Your ID: ${socket.id}, Connected to: ${sourceSocketId}`;
+        document.getElementById('userIdDisplay').innerHTML = `Your ID: ${socket.id}, Connected to: ${sourceSocketId}`;
     }
 
 
@@ -130,16 +124,21 @@
         });
     }
 
-    function handleIceCandidate(candidate) {
-      peerConnection.addIceCandidate(candidate)
-        .catch((error) => {
-          console.error('Erreur lors de la gestion du candidat ICE:', error);
-        });
+    function handleIceCandidate(candidate, targetSocketId) {
+        if (peerConnection) {
+        peerConnection.addIceCandidate(candidate)
+            .catch((error) => {
+                console.error('Erreur lors de la gestion du candidat ICE:', error);
+            });
+        } else {
+            console.warn('Peer connection is undefined. Ice candidate not added.');
+        }
     }
 
     function sendMessage() {
         console.log('sending message..');
         const message = messageInput.value.trim();
+        let dataChannel;
         
         if (message !== '') {
             console.log('message verified');
@@ -150,13 +149,20 @@
             
             if(!peerConnection.dataChannel) {
                 console.log("no dataChannel.. creating a new one !");
-                const dataChannel = peerConnection.createDataChannel('chat');
+                dataChannel = peerConnection.createDataChannel('chat');
                 setupDataChannel(dataChannel);
-                console.log("created !");
+                console.log("created ! " + dataChannel.readyState.toString());
+            }else{
+                dataChannel = peerConnection.dataChannel;
+            }
+
+            if(dataChannel.readyState != 'open'){
+                console.log("not ready");
+                return;
             }
 
             console.log('peer connection verified');
-            peerConnection.dataChannel.send(message);
+            dataChannel.send(message);
             displayMessage('You', message);
             messageInput.value = '';
             console.log('message sent !');
@@ -167,7 +173,9 @@
       const chatMessages = document.createElement('div');
       chatMessages.innerHTML = `<strong>${sender}:</strong> ${message}`;
       chatMessagesContainer.appendChild(chatMessages);
+      let data = {
+        'sender': sender,
+        'message': message.toString
+      };
+      socket.emit('save in DB', (data));
     }
-  </script>
-</body>
-</html>

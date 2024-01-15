@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <title>WebRTC Chat Example</title>
+</head>
+<body>
+  <h1>WebRTC Chat Example</h1>
+
+  <div id="chat-messages"></div>
+  <input type="text" id="messageInput" placeholder="Type your message...">
+  <button onclick="sendMessage()">Send</button>
+  <input type="text" id="IDInput" placeholder="the id you wish to connect to">
+  <button id="initiateConnectionBtn">connect</button>
+
+  <div id="userIdDisplay">Your ID: <span id="userId"></span></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
