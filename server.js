@@ -7,6 +7,8 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
+let ids = [];
+
 const messagesDB = new sqlite3.Database('public/message.db', sqlite3.OPEN_READWRITE, (err) => {
   if(err) return console.error(err.message);
 });
@@ -22,6 +24,7 @@ app.use(express.static('public', { 'extensions': ['html', 'css', 'js'] }));
 
 io.on('connection', (socket) => {
   console.log('Utilisateur connecté:', socket.id);
+  ids.push(socket.id);
 
   // Événements pour la gestion de la signalisation WebRTC
   socket.on('offer', (offer, targetSocketId) => {
@@ -39,6 +42,7 @@ io.on('connection', (socket) => {
   // Gestionnaire de déconnexion
   socket.on('disconnect', () => {
     console.log('Utilisateur déconnecté:', socket.id);
+    ids.pop(socket.id);
   });
 
   // DB EVENTS
@@ -65,27 +69,13 @@ io.on('connection', (socket) => {
       }
     });
   });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-  // MESSAGE
   socket.on('message', (data) => {
     io.to(data.target).emit('message', data);
   });
+  socket.on('getOnlineUsers', (data) => {
+    io.emit('online ids', ids);
+  });
+
 });
 
 const PORT = process.env.PORT || 3000;
